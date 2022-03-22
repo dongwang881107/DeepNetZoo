@@ -85,6 +85,14 @@ class Solver(object):
             loss_func = self.model.loss()
         self.model.to(self.device)
 
+        # compute total patch number
+        if (self.patch_size!=None) & (self.patch_n!=None):
+            total_train_data = len(self.dataloader[0].dataset)*self.patch_n
+            total_valid_data = len(self.dataloader[1].dataset)*self.patch_n
+        else:
+            total_train_data = len(self.dataloader[0].dataset)
+            total_valid_data = len(self.dataloader[1].dataset)
+
         # load statistics
         total_train_loss, total_valid_loss, total_valid_metric = load_stat(start_epoch, self.save_path, self.loss_name, self.metric_name)
         min_valid_loss = np.inf
@@ -112,7 +120,7 @@ class Solver(object):
                 # update statistics
                 train_loss += loss.item()*x.size()[0]
             # update statistics
-            total_train_loss.append(train_loss/len(self.dataloader[0].dataset))
+            total_train_loss.append(train_loss/total_train_data)
             # update scheduler    
             scheduler.step()
             
@@ -132,10 +140,10 @@ class Solver(object):
                     loss = loss_func(pred, y)
                     metric = self.metric_func(pred, y)
                     valid_loss += loss.item()
-                    valid_metric = update_metric(valid_metric, metric, i)
+                    valid_metric = metric if i == 0 else {key:valid_metric[key]+metric[key] for key in metric.keys()}
             # update statistics
-            total_valid_loss.append(valid_loss/len(self.dataloader[1].dataset))
-            total_valid_metric.append(valid_metric)
+            total_valid_loss.append(valid_loss/total_valid_data)
+            total_valid_metric.append({key:valid_metric[key]/total_valid_data for key in valid_metric.keys()})
             # save best checkpoint
             if min_valid_loss > valid_loss:
                 print('{: ^118s}'.format('Validation loss decreased! Saving the checkpoint!'))
@@ -183,8 +191,6 @@ class Solver(object):
         with torch.no_grad():
             for i, (x,y) in enumerate(self.dataloader):
                 # add 1 channel in feature dimension (batch,feature,weight,height)
-                # x = x.unsqueeze(1).float().to(self.device)
-                # y = y.unsqueeze(1).float().to(self.device)
                 x = x.float().to(self.device)
                 y = y.float().to(self.device)
                 # predict

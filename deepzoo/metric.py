@@ -1,5 +1,6 @@
 import torch
 import math
+import sys
 import torch.nn.functional as F
 from torch.autograd import Variable
 
@@ -10,6 +11,27 @@ __all__ = [
     "ComputeSSIM",
     "MetricsCompose",
 ]
+
+# compute metrics for all batches
+def batch_metric(x, y, name, reduction='sum'):
+    metric = 0
+    for i in range(x.size()[0]):
+        x_slice = x[i,0,:,:]
+        y_slice = y[i,0,:,:]
+        if name == 'MSE':
+            metric += compute_MSE(x_slice, y_slice)
+        elif name == 'RMSE':
+            metric += compute_RMSE(x_slice, y_slice)
+        elif name == 'PSNR':
+            metric += compute_PSNR(x_slice, y_slice)
+        elif name == 'SSIM':
+            x_slice = x_slice.unsqueeze(0).unsqueeze(0)
+            y_slice = y_slice.unsqueeze(0).unsqueeze(0)
+            metric += compute_SSIM(x_slice, y_slice)
+        else:
+            print('MSE | RMSE | PSNR | SSIM')
+            sys.exit(0)
+    return metric if reduction == 'sum' else metric/x.size()[0]
 
 def compute_MSE(x, y):
     return ((x-y)**2).mean()
@@ -53,20 +75,20 @@ def _create_window(window_size, channel):
     return window
 
 class ComputeMSE:
-    def __call__(self, x, y):
-        return {'MSE':compute_MSE(x,y)}
+    def __call__(self, x, y, batch=True):
+        return {'MSE':batch_metric(x,y,'MSE')} if batch else {'MSE':compute_MSE(x,y)}
 
 class ComputeRMSE:
-    def __call__(self, x, y):
-        return {'RMSE':compute_RMSE(x,y)}
+    def __call__(self, x, y, batch=True):
+        return {'RMSE':batch_metric(x,y,'RMSE')} if batch else {'RMSE':compute_RMSE(x,y)}
 
 class ComputePSNR:
-    def __call__(self, x, y):
-        return {'PSNR':compute_PSNR(x,y)}
+    def __call__(self, x, y, batch=True):
+        return {'PSNR':batch_metric(x,y,'PSNR')} if batch else {'PSNR':compute_PSNR(x,y)}
 
 class ComputeSSIM:
-    def __call__(self, x, y):
-        return {'SSIM':compute_SSIM(x, y)}
+    def __call__(self, x, y, batch=True):
+        return {'SSIM':batch_metric(x,y,'SSIM')} if batch else {'SSIM':compute_SSIM(x,y)}
 
 class MetricsCompose:
     def __init__(self, metrics):

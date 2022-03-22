@@ -49,18 +49,6 @@ def print_metric(metric_x, metric_pred):
         print('{:>38} {:<4} = {:<8.4f}'.format('Original average', keys[j], avg_metric[j,0]/len(metric_x)), end='| ')
         print('{:<15} {:<4} = {:<8.4f}'.format('Predict average', keys[j], avg_metric[j,1]/len(metric_x)))
 
-# update metrics
-def update_metric(total_metric, metric, i):
-    if i == 0:
-        total_metric = metric
-    else:
-        keys = list(metric.keys())  
-        for key in keys:
-            total_metric[key] = total_metric[key]*i
-            total_metric[key] += metric[key]
-            total_metric[key] = total_metric[key]/(i+1)
-    return total_metric
-
 
 '''
 LOADING
