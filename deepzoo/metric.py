@@ -94,8 +94,8 @@ class MetricsCompose:
     def __init__(self, metrics):
         self.metrics = metrics
 
-    def __call__(self, x, y):
+    def __call__(self, x, y, batch=True):
         metrics = {}
         for m in self.metrics:
-            metrics = dict(metrics, **m(x,y))
+            metrics = dict(metrics, **m(x,y,batch=batch))
         return metrics

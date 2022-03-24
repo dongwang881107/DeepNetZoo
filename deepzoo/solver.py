@@ -108,6 +108,8 @@ class Solver(object):
                     x = x.view(-1, 1, self.patch_size, self.patch_size)
                     y = y.view(-1, 1, self.patch_size, self.patch_size)
                 # zero the gradients
+                self.model.train()
+                self.model.zero_grad()
                 optim.zero_grad()
                 # forward propagation
                 pred = self.model(x)
@@ -119,7 +121,7 @@ class Solver(object):
                 optim.step()
                 # update statistics
                 train_loss += loss.item()*x.size()[0]
-            # update statistics
+            # update statistics (average over batch)
             total_train_loss.append(train_loss/total_train_data)
             # update scheduler    
             scheduler.step()
@@ -141,7 +143,7 @@ class Solver(object):
                     metric = self.metric_func(pred, y)
                     valid_loss += loss.item()
                     valid_metric = metric if i == 0 else {key:valid_metric[key]+metric[key] for key in metric.keys()}
-            # update statistics
+            # update statistics (average over batch)
             total_valid_loss.append(valid_loss/total_valid_data)
             total_valid_metric.append({key:valid_metric[key]/total_valid_data for key in valid_metric.keys()})
             # save best checkpoint
