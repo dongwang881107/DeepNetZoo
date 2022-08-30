@@ -3,6 +3,8 @@ import os
 import time
 import numpy as np
 import torch.nn as nn
+from torchinfo import summary
+
 
 '''
 PRINTING
@@ -13,13 +15,17 @@ def print_usage():
     python {train.py, test.py, plot.py} [optional arguments]
     '''
 
+# print model
+def print_model(model, input_size):
+    summary(model, input_size, dtypes=[torch.float, torch.float], col_names=["kernel_size", "output_size", "num_params"])
+
 # print arguments
 def print_args(args):
     print('{:-^118s}'.format('{} parameters!'.format(args.mode.capitalize()+'ing')))
     count = 0
     for arg, value in args.__dict__.items():
         count = count + 1
-        value = str(value) if isinstance(value, list) else value
+        value = str(value) if isinstance(value, list) or value is None else value
         if count == 2:
             print('{:>28} = {:<28}'.format(arg, value))
             count = 0

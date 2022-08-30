@@ -3,11 +3,12 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
+from deepzoo.architecture.blocks import *
 from deepzoo.preprocessing import *
 from deepzoo.postprocessing import *
 
 class Solver(object):
-    def __init__(self, dataloader, model, metric_func, args):
+    def __init__(self, dataloader, model, loss_func, metric_func, args):
         super().__init__()
 
         # load shared parameters
@@ -26,23 +27,24 @@ class Solver(object):
             self.scheduler = args.scheduler
             self.lr = args.lr
             self.gamma = args.gamma
-            self.device_ids = args.device_ids
+            self.device_idx = args.device_idx
             self.decay_iters = args.decay_iters
             self.print_iters = args.print_iters
             self.save_iters = args.save_iters
             self.metric_func = metric_func
+            self.loss_func = loss_func
             self.model = model
-            self.device = torch.device(set_device(self.device_ids))
+            self.device = torch.device(set_device(self.device_idx))
             self.loss_name = args.loss_name
             self.metric_name = args.metric_name
         elif self.mode == 'test':
             # load teseting parameters
-            self.device_ids = args.device_ids
+            self.device_idx = args.device_idx
             self.metric_func = metric_func
             self.metric_name = args.metric_name
             self.pred_name = args.pred_name
             self.checkpoint = args.checkpoint
-            self.device = torch.device(set_device(self.device_ids))
+            self.device = torch.device(set_device(self.device_idx))
             self.model = model
         else:
             # load plotting parameters
@@ -75,15 +77,13 @@ class Solver(object):
             print('{: ^118s}'.format('Successfully load checkpoint! Training from epoch {}'.format(start_epoch)))
         else:
             print('{: ^118s}'.format('No checkpoint found! Training from epoch 0!'))
+            # self.model.apply(weights_init)
             start_epoch = 0
         
         # multi-gpu training and move model to device
-        if len(self.device_ids)>1:
+        if len(self.device_idx)>1:
             self.model = nn.DataParallel(self.model)
-            loss_func = self.model.module.loss()
-        else:
-            loss_func = self.model.loss()
-        self.model.to(self.device)
+        self.model = self.model.to(self.device)
 
         # compute total patch number
         if (self.patch_size!=None) & (self.patch_n!=None):
@@ -100,9 +100,8 @@ class Solver(object):
             # training
             train_loss = 0.0
             for (x,y) in self.dataloader[0]:
-                # add 1 channel in feature dimension (batch,feature,weight,height)
-                x = x.unsqueeze(1).float().to(self.device)
-                y = y.unsqueeze(1).float().to(self.device)
+                x = x.float().to(self.device)
+                y = y.float().to(self.device)
                 # patch training 
                 if (self.patch_size!=None) & (self.patch_n!=None):
                     x = x.view(-1, 1, self.patch_size, self.patch_size)
@@ -114,15 +113,15 @@ class Solver(object):
                 # forward propagation
                 pred = self.model(x)
                 # compute loss
-                loss = loss_func(pred, y)/x.size()[0]
+                loss = self.loss_func(pred, y)
                 # backward propagation
                 loss.backward()
                 # update weights
                 optim.step()
                 # update statistics
-                train_loss += loss.item()*x.size()[0]
+                train_loss += loss.item()
             # update statistics (average over batch)
-            total_train_loss.append(train_loss/total_train_data)
+            total_train_loss.append(train_loss)
             # update scheduler    
             scheduler.step()
             
@@ -132,19 +131,21 @@ class Solver(object):
             self.model.eval()
             with torch.no_grad():
                 for i, (x,y) in enumerate(self.dataloader[1]):
-                    # add 1 channel in feature dimension (batch,feature,weight,height)
-                    x = x.unsqueeze(1).float().to(self.device)
-                    y = y.unsqueeze(1).float().to(self.device)
+                    x = x.float().to(self.device)
+                    y = y.float().to(self.device)
                     if (self.patch_size!=None) & (self.patch_n!=None):
                         x = x.view(-1, 1, self.patch_size, self.patch_size)
                         y = y.view(-1, 1, self.patch_size, self.patch_size) 
+                    # forward propagation
                     pred = self.model(x)
-                    loss = loss_func(pred, y)
+                    # compute loss
+                    loss = self.loss_func(pred, y)
+                    # compute metric
                     metric = self.metric_func(pred, y)
                     valid_loss += loss.item()
                     valid_metric = metric if i == 0 else {key:valid_metric[key]+metric[key] for key in metric.keys()}
             # update statistics (average over batch)
-            total_valid_loss.append(valid_loss/total_valid_data)
+            total_valid_loss.append(valid_loss)
             total_valid_metric.append({key:valid_metric[key]/total_valid_data for key in valid_metric.keys()})
             # save best checkpoint
             if min_valid_loss > valid_loss:
@@ -182,7 +183,7 @@ class Solver(object):
             self.model.load_state_dict(state['model'])
 
         # multi-gpu testing and move model to device
-        if len(self.device_ids)>1:
+        if len(self.device_idx)>1:
             self.model = nn.DataParallel(self.model)
         self.model = self.model.to(self.device)
         
@@ -192,11 +193,15 @@ class Solver(object):
         self.model.eval()
         with torch.no_grad():
             for i, (x,y) in enumerate(self.dataloader):
+                # resize to (batch,feature,weight,height)
+                x = x.view(-1, 1, 144, 144)
+                y = y.view(-1, 1, 144, 144)
                 # add 1 channel in feature dimension (batch,feature,weight,height)
                 x = x.float().to(self.device)
                 y = y.float().to(self.device)
                 # predict
                 pred = self.model(x)
+                pred = pred/torch.max(pred)
                 metric_x = self.metric_func(x, y)
                 metric_pred = self.metric_func(pred, y)
                 total_metric_x.append(metric_x)

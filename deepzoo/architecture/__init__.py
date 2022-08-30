@@ -1,8 +1,9 @@
 
-__all__ = ["RED_CNN", "WGAN_VGG"]
+__all__ = ["CNN"]
 
-from . import RED_CNN
-from . import WGAN_VGG
+from . import CNN
 
-redcnn = RED_CNN.RED_CNN
-wganvgg = WGAN_VGG.WGAN_VGG
+redcnn = CNN.REDCNN
+unet_mp = CNN.UNET_MP
+unet_tmi = CNN.UNET_TMI
+unet_mia = CNN.UNET_MIA

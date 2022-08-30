@@ -1,5 +1,5 @@
 import random
-import torch
+import numpy as np
 import torchvision.transforms.functional as TF
 
 __all__ = [
@@ -30,7 +30,7 @@ def rotate(x, y, angle=45):
     return TF.rotate(x, angle=angle), TF.rotate(y, angle=angle)
 
 def normalize(x, y):
-    return x/torch.max(x), y/torch.max(y)
+    return x/np.max(x), y/np.max(y)
 
 class MyVflip:
     def __call__(self, x, y):
