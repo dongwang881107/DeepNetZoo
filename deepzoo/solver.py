@@ -132,7 +132,7 @@ class Solver(object):
                     d_real = self.model.discriminator(real)
                     # compute loss
                     # dis_loss, grad_loss = self.model.discriminator_loss(fake, real, d_fake, d_real, self.lambda2, self.device)
-                    dis_loss = self.model.discriminator_loss(d_fake, d_real)
+                    dis_loss = self.model.discriminator_loss(fake, real, d_fake, d_real)
                     # backward propagation
                     dis_loss.backward(retain_graph=True)
                     # update weights
@@ -149,8 +149,7 @@ class Solver(object):
                 fake = self.model.generator(x)
                 d_fake = self.model.discriminator(fake)
                 # compute loss
-                # gen_loss, perc_loss = self.model.generator_loss(fake, real, d_fake, self.lambda1)
-                gen_loss = self.model.generator_loss(fake, real, d_fake, self.lambda1, self.lambda2)
+                gen_loss = self.model.generator_loss(fake, real, d_fake)
                 # backward propagation
                 gen_loss.backward()
                 # update weights
@@ -183,10 +182,9 @@ class Solver(object):
                     d_fake = self.model.discriminator(fake)
                     d_real = self.model.discriminator(real)
                     # compute loss
-                    # with torch.enable_grad():
-                    #     dis_loss, grad_loss = self.model.discriminator_loss(fake, real, d_fake, d_real, self.lambda2, self.device)
-                    dis_loss = self.model.discriminator_loss(d_fake, d_real)
-                    gen_loss = self.model.generator_loss(fake, real, d_fake, self.lambda1, self.lambda2)
+                    with torch.enable_grad():
+                        dis_loss = self.model.discriminator_loss(fake, real, d_fake, d_real)
+                        gen_loss = self.model.generator_loss(fake, real, d_fake)
                     # compute metric
                     # fake = fake/torch.max(fake)
                     metric = self.metric_func(fake, real)

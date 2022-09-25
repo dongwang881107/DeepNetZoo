@@ -29,7 +29,8 @@ def main(args):
                             patch_n=args.patch_n if args.mode=='train' else None, 
                             patch_size=args.patch_size if args.mode=='train' else None)
     # determine neural networks
-    model = deeparch.cgan()
+    model = deeparch.wganvgg(args.patch_size, args.lambda1, args.lambda2)
+    # model = deeparch.cgan(args.lambda1, args.lambda2)
     if args.mode == 'train':
         print_model(model,(1,1,144,144))
     # determine metric functions

@@ -81,24 +81,26 @@ class WGANVGG_extractor(nn.Module):
 # Low-Dose CT Image Denoising Using a Generative Adversarial Network With Wasserstein Distance and Perceptual Loss
 # 2018, TMI, Uni-Modality method
 class WGANVGG(nn.Module):
-    def __init__(self, patch_size=64):
+    def __init__(self, patch_size, lambda1, lambda2):
         super(WGANVGG, self).__init__()
         self.generator = WGANVGG_generator()
         self.discriminator = WGANVGG_discriminator(patch_size)
         self.extractor = WGANVGG_extractor()
         self.perc_metric = nn.MSELoss()
+        self.lambda1 = lambda1
+        self.lambda2 = lambda2
 
     # discriminator loss
-    def discriminator_loss(self, fake, real, d_fake, d_real, lambda2, device):
-        grad_loss = self.gradient_loss(fake, real, device)
-        dis_loss = -torch.mean(d_real) + torch.mean(d_fake) + lambda2*grad_loss
-        return (dis_loss, grad_loss)
+    def discriminator_loss(self, fake, real, d_fake, d_real):
+        grad_loss = self.gradient_loss(fake, real)
+        dis_loss = -torch.mean(d_real) + torch.mean(d_fake) + self.lambda2*grad_loss
+        return dis_loss
 
     # generator loss
-    def generator_loss(self, fake, real, d_fake, lambda1):
+    def generator_loss(self, fake, real, d_fake):
         perc_loss = self.perceptual_loss(fake, real)
-        gen_loss = -torch.mean(d_fake) + lambda1*perc_loss
-        return (gen_loss, perc_loss)
+        gen_loss = -torch.mean(d_fake) + self.lambda1*perc_loss
+        return gen_loss
 
     # perceptual loss
     def perceptual_loss(self, fake, real):
@@ -110,7 +112,8 @@ class WGANVGG(nn.Module):
         return perc_loss
 
     # gradient loss
-    def gradient_loss(self, fake, real, device):
+    def gradient_loss(self, fake, real):
+        device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         eta = torch.Tensor(real.size(0),1,1,1).uniform_(0,1).to(device)
         interp = (eta*real+((1-eta)*fake)).requires_grad_(True)
         d_interp = self.discriminator(interp)
@@ -210,24 +213,26 @@ class CGAN_extractor(nn.Module):
 # Ultra-low-dose PET reconstruction using generative adversarial network with feature matching and task-specific perceptual loss
 # 2019, Medical Physics
 class CGAN(nn.Module):
-    def __init__(self):
+    def __init__(self, lambda1, lambda2):
         super(CGAN, self).__init__()
         self.generator = CGAN_generator()
         self.discriminator = CGAN_discriminator()
         self.extractor = CGAN_extractor()
         self.gen_metric = nn.L1Loss()
         self.perc_metric = nn.MSELoss()
+        self.lambda1 = lambda1
+        self.lambda2 = lambda2
 
     # discriminator loss
-    def discriminator_loss(self, d_fake, d_real):
+    def discriminator_loss(self, fake, real, d_fake, d_real):
         dis_loss = torch.mean(torch.log(1-d_fake)) + torch.mean(torch.log(d_real))
         return dis_loss
 
     # generator loss
-    def generator_loss(self, fake, real, d_fake, lambda1, lambda2):
+    def generator_loss(self, fake, real, d_fake):
         l1_loss = self.gen_metric(fake, real)
         perc_loss = self.perceptual_loss(fake, real)
-        gen_loss = -torch.mean(torch.log(1-d_fake)) + lambda1*perc_loss + lambda2*l1_loss
+        gen_loss = -torch.mean(torch.log(1-d_fake)) + self.lambda1*perc_loss + self.lambda2*l1_loss
         return gen_loss
 
     # perceptual loss
