@@ -38,7 +38,7 @@ class MyDataset(Dataset):
 
     # get data path
     def get_path(self):
-        return self.pet10_path, self.ct_path, self.pet60_path
+        return self.pet10_path, self.pet60_path
 
     # get image patches
     def get_patch(self, pet10, pet60):

@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
-from deepzoo.architecture.blocks import *
+from deepzoo.architecture.src import *
 from deepzoo.preprocessing import *
 from deepzoo.postprocessing import *
 
