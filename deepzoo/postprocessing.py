@@ -3,6 +3,7 @@ import os
 import time
 import numpy as np
 import torch.nn as nn
+from torchinfo import summary
 
 '''
 PRINTING
@@ -28,9 +29,21 @@ def print_args(args):
     if count == 1:
         print('\n')
 
+# print model
+def print_model(model, input_size):
+    print('Generator:')
+    summary(model.generator, input_size=input_size, col_names=["kernel_size", "output_size", "num_params"])
+    print('Discriminator:')
+    summary(model.discriminator, input_size=input_size, col_names=["kernel_size", "output_size", "num_params"])
+
 # print statistics
 def print_stat(epoch, total_train_loss, total_valid_loss, total_valid_metric, start_time):
-    print('epoch = {:<3} | train_loss = {:<6.4f} | val_loss = {:<7.4f}'.format(epoch+1, total_train_loss[-1], total_valid_loss[-1]), end="| ")
+    print('epoch = {:<3} | train loss   | dis = {:<8.2f} | gen = {:<8.2f}'.\
+        format(epoch+1, total_train_loss[-1][0], total_train_loss[-1][1]), end="| \n")
+    print(' '*12, end="| ")
+    print('valid loss   | dis = {:<8.2f} | gen = {:<8.2f}'.\
+        format(total_valid_loss[-1][0], total_valid_loss[-1][1]), end="| \n")
+    print(' '*12, end="| valid metric | ")
     keys = list(total_valid_metric[0].keys())
     for key in keys:
         txt = key+' = {:<8.4f}'
@@ -72,11 +85,13 @@ def load_stat(start_epoch, save_path, loss_name, metric_name):
 '''
 SAVING
 '''
-# save checkpoint
-def save_checkpoint(model, optimizer, scheduler, save_path, num_epochs, epoch=None):
+# save checkpoints
+def save_checkpoint(model, dis_optim, gen_optim, dis_sched, gen_sched, save_path, num_epochs, epoch=None):
     checkpoint_path = os.path.join(save_path, 'checkpoint')
-    state_dict = {'model':model.module.state_dict() if isinstance(model, nn.DataParallel) else model.state_dict(),\
-        'optimizer':optimizer.state_dict(), 'scheduler':scheduler.state_dict(), 'epoch':epoch}
+    state_dict = {'generator':model.generator.module.state_dict() if isinstance(model.generator, nn.DataParallel) else model.generator.state_dict(),\
+        'discriminator':model.discriminator.module.state_dict() if isinstance(model.discriminator, nn.DataParallel) else model.discriminator.state_dict(),\
+        'gen_optim':gen_optim.state_dict(), 'dis_optim':dis_optim.state_dict(), \
+        'gen_sched':gen_sched.state_dict(), 'dis_sched':dis_sched.state_dict(), 'epoch':epoch}
     if epoch is not None:
         if epoch < num_epochs: 
             torch.save(state_dict, checkpoint_path+'/checkpoint_{}.pkl'.format(epoch))
@@ -97,9 +112,7 @@ def save_metric(metric, save_path, metric_name):
 # save statistics
 def save_stat(train_loss, valid_loss, metric, save_path, loss_name, metric_name):
     loss_path = os.path.join(save_path, 'stat', loss_name+'.npy')
-    total_loss = np.zeros([len(train_loss),2])
-    total_loss[:,0] = train_loss
-    total_loss[:,1] = valid_loss
+    total_loss = [train_loss, valid_loss]
     np.save(loss_path, total_loss)
     print('{:>45} => {:<40}'.format('Train/Valid loss saved in', loss_path))
     metric_path = os.path.join(save_path, 'stat', metric_name+'.npy')

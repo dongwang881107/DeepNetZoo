@@ -1,8 +1,7 @@
 
-__all__ = ["RED_CNN", "WGAN_VGG"]
+__all__ = ["GAN"]
 
-from . import RED_CNN
-from . import WGAN_VGG
+from . import GAN
 
-redcnn = RED_CNN.RED_CNN
-wganvgg = WGAN_VGG.WGAN_VGG
+wganvgg = GAN.WGANVGG
+cgan = GAN.CGAN
