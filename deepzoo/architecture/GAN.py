@@ -173,6 +173,7 @@ class CGAN_generator(nn.Module):
         out = self.layer18(self.layer17(self.layer16(out)))
         out = torch.cat([res1, out], dim=1)
         out = self.layer21(self.layer20(self.layer19(out)))
+        out = out + x
         return out
 
 # CGAN discriminator

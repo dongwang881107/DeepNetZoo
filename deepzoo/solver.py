@@ -246,8 +246,8 @@ class Solver(object):
         with torch.no_grad():
             for i, (x,real) in enumerate(self.dataloader):
                 # resize to (batch,feature,weight,height)
-                x = x.view(-1, 1, 144, 144)
-                real = real.view(-1, 1, 144, 144)
+                x = x.view(-1, 1, 192, 192)
+                real = real.view(-1, 1, 192, 192)
                 # move data to device
                 x = x.float().to(self.device)
                 real = real.float().to(self.device)
